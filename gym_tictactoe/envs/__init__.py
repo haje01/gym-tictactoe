@@ -15,8 +15,10 @@ LOG_FMT = logging.Formatter('%(asctime)-15s %(levelname)s '
 def tomark(code):
     return CODE_MARK_MAP[code]
 
+
 def tocode(mark):
     return 1 if mark == 'O' else 2
+
 
 def check_game_status(board):
     """Return game status.
@@ -25,7 +27,8 @@ def check_game_status(board):
         board (list): Current board state
 
     Returns:
-        int: -1 for game in progress, 0 for draw game, 1/2 for finished game(winer code).
+        int: -1 for game in progress, 0 for draw game, 1/2 for finished
+            game(winer code).
     """
     for t in [1, 2]:
         for j in range(0, 9, 3):
@@ -51,16 +54,17 @@ def check_game_status(board):
 class TicTacToeEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, alpha=0.02):
+    def __init__(self, alpha=0.02, show_number=True):
         self.action_space = spaces.Discrete(NUM_LOC)
         self.observation_space = spaces.Discrete(NUM_LOC)
         self.alpha = alpha
         self._seed()
         self._reset()
+        self.show_number = show_number
 
     def _reset(self):
         self.board = [0] * NUM_LOC
-        self.to_move = 0
+        self.to_move = 1
         self.done = False
         return self._get_obs()
 
@@ -81,6 +85,7 @@ class TicTacToeEnv(gym.Env):
             bool: Done
             dict: Additional information
         """
+        assert self.action_space.contains(action)
         loc = action
         if self.done:
             return self._get_obs(), 0, True, None
@@ -92,49 +97,55 @@ class TicTacToeEnv(gym.Env):
             reward = -1
         else:
             # place
-            self.board[loc] = self.to_move + 1
+            self.board[loc] = self.to_move
             # decide
             status = check_game_status(self.board)
+            logging.debug("check_game_status board {} status"
+                          " {}".format(self.board, status))
             if status >= 0:
                 self.done = True
                 reward = 1 if status in [1, 2] else 0
         # switch turn
-        self.to_move = 1 - self.to_move
-
+        self.to_move = 2 if self.to_move == 1 else 1
         return self._get_obs(), reward, self.done, None
 
     def _get_obs(self):
-        return self.board, self.to_move
+        return tuple(self.board), self.to_move
 
     def _render(self, mode='human', close=False):
         if close:
             return
-
-        for j in range(0, 9, 3):
-            print('|'.join([tomark(self.board[i]) for i in range(j, j+3)]))
-            if j < 6:
-                print('-----')
+        self.render_board()
         print('')
 
-    def empty_locs(self):
-        return [i for i, c in enumerate(self.board) if c == 0]
+    def render_board(self):
+        for j in range(0, 9, 3):
+            def mark(i):
+                return tomark(self.board[i]) if not self.show_number or\
+                    self.board[i] != 0 else str(i+1)
+            print('|'.join([mark(i) for i in range(j, j+3)]))
+            if j < 6:
+                print('-----')
 
-    def render_turn(self, agent):
-        print("{}'s turn.".format(agent.mark))
+    def render_turn(self, to_move):
+        print("{}'s turn.".format(tomark(to_move)))
 
-    def render_result(self, agent, reward):
+    def render_result(self, to_move, reward):
         if reward == 0:
             print("==== Finished: Draw ====")
         else:
             result = 'win' if reward == 1 else 'lose'
-            print("==== Finished: {} {} ====".format(agent.mark, result))
+            print("==== Finished: {} {}! ====".format(tomark(to_move), result))
+
+    def empty_locs(self):
+        return [i for i, c in enumerate(self.board) if c == 0]
 
 
 def set_log_level_by(verbosity):
     if verbosity == 0:
         level = 40
     elif verbosity == 1:
-        level =  20
+        level = 20
     elif verbosity >= 2:
         level = 10
 
@@ -149,23 +160,3 @@ def set_log_level_by(verbosity):
     handler.setLevel(level)
     handler.setFormatter(LOG_FMT)
     return level
-
-
-@click.group()
-@click.option('-v', '--verbose', count=True, help="Increase verbosity.")
-@click.pass_context
-def cli(ctx, verbose):
-    level = set_log_level_by(verbose)
-    logging.debug("log level {}".format(level))
-
-
-@cli.command(help="Play Human vs Humna")
-@click.pass_context
-def playhuman(ctx):
-    env = TicTacToeEnv()
-    env.board = [1, 0, 2, 0, 1, 0, 2, 0, 1]
-    env.render()
-
-
-if __name__ == '__main__':
-    cli(obj={})
