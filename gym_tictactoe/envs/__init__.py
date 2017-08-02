@@ -2,12 +2,14 @@ import logging
 
 import gym
 from gym import spaces
-import click
 
 CODE_MARK_MAP = {0: ' ', 1: 'O', 2: 'X'}
 NUM_LOC = 9
+O_REWARD = 1
+X_REWARD = -1
+DRAW_REWARD = 0
 
-LOG_FMT = logging.Formatter('%(asctime)-15s %(levelname)s '
+LOG_FMT = logging.Formatter('%(levelname)s '
                             '[%(filename)s:%(lineno)d] %(message)s',
                             '%Y-%m-%d %H:%M:%S')
 
@@ -20,15 +22,27 @@ def tocode(mark):
     return 1 if mark == 'O' else 2
 
 
+def next_mark(mark):
+    return 'X' if mark == 'O' else 'O'
+
+
+def agent_by_mark(agents, mark):
+    for agent in agents:
+        if agent.mark == mark:
+            return agent
+
+
 def check_game_status(board):
-    """Return game status.
+    """Return game status by current board status.
 
     Args:
         board (list): Current board state
 
     Returns:
-        int: -1 for game in progress, 0 for draw game, 1/2 for finished
-            game(winer code).
+        int:
+            -1: game in progress
+            0: draw game,
+            1 or 2 for finished game(winner mark code).
     """
     for t in [1, 2]:
         for j in range(0, 9, 3):
@@ -52,29 +66,28 @@ def check_game_status(board):
 
 
 class TicTacToeEnv(gym.Env):
-    metadata = {'render.modes': ['human']}
+    metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self, alpha=0.02, show_number=True):
+    def __init__(self, alpha=0.02, show_number=False):
         self.action_space = spaces.Discrete(NUM_LOC)
         self.observation_space = spaces.Discrete(NUM_LOC)
         self.alpha = alpha
+        self.set_start_mark('O')
+        self.show_number = show_number
         self._seed()
         self._reset()
-        self.show_number = show_number
+
+    def set_start_mark(self, mark):
+        self.start_mark = mark
 
     def _reset(self):
         self.board = [0] * NUM_LOC
-        self.to_move = 1
+        self.mark = self.start_mark
         self.done = False
         return self._get_obs()
 
     def _step(self, action):
         """Step environment by action.
-
-        Reward rule:
-            -1: if agent lose or misplace
-            0: game in progress or draw
-            1: if agent win the game.
 
         Args:
             action (int): Location
@@ -86,58 +99,75 @@ class TicTacToeEnv(gym.Env):
             dict: Additional information
         """
         assert self.action_space.contains(action)
+
         loc = action
         if self.done:
             return self._get_obs(), 0, True, None
 
-        reward = 0
-        if self.board[loc] != 0:
-            # misplace
+        reward = DRAW_REWARD
+        # place
+        self.board[loc] = tocode(self.mark)
+        status = check_game_status(self.board)
+        logging.debug("check_game_status board {} mark '{}'"
+                      " status {}".format(self.board, self.mark, status))
+        if status >= 0:
             self.done = True
-            reward = -1
-        else:
-            # place
-            self.board[loc] = self.to_move
-            # decide
-            status = check_game_status(self.board)
-            logging.debug("check_game_status board {} status"
-                          " {}".format(self.board, status))
-            if status >= 0:
-                self.done = True
-                reward = 1 if status in [1, 2] else 0
+            if status in [1, 2]:
+                # always called by self
+                reward = O_REWARD if self.mark == 'O' else X_REWARD
+
         # switch turn
-        self.to_move = 2 if self.to_move == 1 else 1
+        self.mark = next_mark(self.mark)
         return self._get_obs(), reward, self.done, None
 
     def _get_obs(self):
-        return tuple(self.board), self.to_move
+        return tuple(self.board), self.mark
 
     def _render(self, mode='human', close=False):
         if close:
             return
-        self.render_board()
-        print('')
+        if mode == 'human':
+            self._show_board(print)  # NOQA
+            print('')
+        else:
+            self._show_board(logging.info)
+            logging.info('')
 
-    def render_board(self):
+    def show_episode(self, human, episode):
+        self._show_episode(print if human else logging.warning, episode)
+
+    def _show_episode(self, showfn, episode):
+        showfn("==== Episode {} ====".format(episode))
+
+    def _show_board(self, showfn):
         for j in range(0, 9, 3):
             def mark(i):
                 return tomark(self.board[i]) if not self.show_number or\
                     self.board[i] != 0 else str(i+1)
-            print('|'.join([mark(i) for i in range(j, j+3)]))
+            showfn('|'.join([mark(i) for i in range(j, j+3)]))
             if j < 6:
-                print('-----')
+                showfn('-----')
 
-    def render_turn(self, to_move):
-        print("{}'s turn.".format(tomark(to_move)))
+    def show_turn(self, human, mark):
+        self._show_turn(print if human else logging.info, mark)
 
-    def render_result(self, to_move, reward):
-        if reward == 0:
-            print("==== Finished: Draw ====")
+    def _show_turn(self, showfn, mark):
+        showfn("{}'s turn.".format(mark))
+
+    def show_result(self, human, mark, reward):
+        self._show_result(print if human else logging.info, mark, reward)
+
+    def _show_result(self, showfn, mark, reward):
+        status = check_game_status(self.board)
+        assert status >= 0
+        if status == 0:
+            showfn("==== Finished: Draw ====")
         else:
-            result = 'win' if reward == 1 else 'lose'
-            print("==== Finished: {} {}! ====".format(tomark(to_move), result))
+            msg = "Winner is '{}'!".format(tomark(status))
+            showfn("==== Finished: {} ====".format(msg))
+        showfn('')
 
-    def empty_locs(self):
+    def available_actions(self):
         return [i for i, c in enumerate(self.board) if c == 0]
 
 
@@ -145,8 +175,10 @@ def set_log_level_by(verbosity):
     if verbosity == 0:
         level = 40
     elif verbosity == 1:
+        level = 30
+    elif verbosity == 2:
         level = 20
-    elif verbosity >= 2:
+    elif verbosity >= 3:
         level = 10
 
     logger = logging.getLogger()
@@ -157,6 +189,10 @@ def set_log_level_by(verbosity):
         handler = logging.StreamHandler()
         logger.addHandler(handler)
 
-    handler.setLevel(level)
-    handler.setFormatter(LOG_FMT)
+    fhandler = logging.FileHandler('log.txt')
+    logger.addHandler(fhandler)
+
+    for handler in logger.handlers:
+        handler.setLevel(level)
+        handler.setFormatter(LOG_FMT)
     return level

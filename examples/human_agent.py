@@ -4,18 +4,30 @@ import logging
 
 import click
 
-from gym_tictactoe.envs import TicTacToeEnv, set_log_level_by
+from gym_tictactoe.envs import TicTacToeEnv, set_log_level_by, agent_by_mark,\
+    next_mark
 
 
 class HumanAgent(object):
-    def __init__(self, action_space):
+    def __init__(self, action_space, mark):
         self.action_space = action_space
+        self.mark = mark
 
-    def act(self):
-        loc = input("Enter location[1-9], q for quit: ")
-        if loc.lower() == 'q':
-            return None
-        return int(loc) - 1
+    def act(self, ava_actions):
+        while True:
+            uloc = input("Enter location[1-9], q for quit: ")
+            if uloc.lower() == 'q':
+                return None
+            try:
+                action = int(uloc) - 1
+                if action not in ava_actions:
+                    raise ValueError()
+            except ValueError:
+                print("Illegal location: '{}'".format(uloc))
+            else:
+                break
+
+        return action
 
 
 @click.group()
@@ -26,7 +38,6 @@ def cli(ctx, verbose):
     logging.debug("log level {}".format(level))
 
 
-
 @cli.command(help="Play human agent.")
 @click.option('-e', '--episode', "max_episode", default=10, show_default=True,
               help="Episode count.")
@@ -35,17 +46,17 @@ def cli(ctx, verbose):
 def play(max_episode, show_number):
     episode = 0
     env = TicTacToeEnv(show_number=show_number)
-    agents = [HumanAgent(env.action_space),
-              HumanAgent(env.action_space)]
+    agents = [HumanAgent(env.action_space, 'O'),
+              HumanAgent(env.action_space, 'X')]
 
     while episode < max_episode:
         obs = env.reset()
-        _, to_move = obs
+        _, mark = obs
         done = False
         env.render()
         while not done:
-            agent = agents[to_move - 1]
-            env.render_turn(to_move)
+            agent = agent_by_mark(agents, next_mark(mark))
+            env.print_turn(mark)
             action = agent.act()
             if action is None:
                 sys.exit()
@@ -55,10 +66,10 @@ def play(max_episode, show_number):
             print('')
             env.render()
             if done:
-                env.render_result(to_move, reward)
+                env.print_result(mark, reward)
                 break
             else:
-                _, to_move = obs
+                _, mark = obs
         episode += 1
 
 
