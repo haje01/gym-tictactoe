@@ -11,22 +11,27 @@ from tqdm import tqdm
 
 from gym_tictactoe.envs import TicTacToeEnv, set_log_level_by, tocode,\
     agent_by_mark, next_mark, check_game_status, tomark, O_REWARD,\
-    X_REWARD, DRAW_REWARD
+    X_REWARD
 from examples.human_agent import HumanAgent
 
 
 DEFAULT_VALUE = 0
 MAX_EPISODE = 10000
 MODEL_FILE = 'td_agent.dat'
-EPSILON = 0.1
+EPSILON = 0.2
 
 st_values = {}
 st_visits = defaultdict(lambda: 0)
 ucb_visits = defaultdict(lambda: defaultdict(int))
 
 
+def set_state_value(state, value):
+    st_visits[state] += 1
+    st_values[state] = value
+
+
 class TDAgent(object):
-    def __init__(self, action_space, mark, policy, epsilon=EPSILON, alpha=0.1,
+    def __init__(self, action_space, mark, policy, epsilon=EPSILON, alpha=0.4,
                  gamma=0.9):
         self.action_space = action_space
         self.mark = mark
@@ -82,20 +87,17 @@ class TDAgent(object):
         c = 5.0  # degree of exploration
         t = self.turn_cnt
 
-        ava_values = []
         for action in ava_actions:
             nstate = self.after_action_state(state, action)
             nval = abs(self.ask_value(nstate))
             ucnt = ucb_visits[state][action]
             if ucnt == 0:
                 max_action = action
-                max_state = state
                 break
 
-            # k = nval + c * math.sqrt(math.log(t+1) / float(ucnt+1))
-            k = nval + c * math.sqrt(1.0 / (ucnt + 1))
-            logging.debug("ucb_policy state {} action {} nval {:0.2f} ucnt {} k {:0.2f}".
-                          format(nstate, action, nval, ucnt, k))
+            k = nval + c * math.sqrt(math.log(t+1) / float(ucnt+1))
+            logging.debug("ucb_policy state {} action {} nval {:0.2f} ucnt {}"
+                          " k {:0.2f}".format(nstate, action, nval, ucnt, k))
             if maxk is None or k > maxk:
                 max_action, maxk = action, k
 
@@ -104,7 +106,6 @@ class TDAgent(object):
             ucb_visits[state][max_action] += 1
 
         return max_action
-
 
     def random_action(self, ava_actions):
         return random.choice(ava_actions)
@@ -145,12 +146,8 @@ class TDAgent(object):
                 # always called by self
                 assert tomark(gstatus) == self.mark
                 val = O_REWARD if self.mark == 'O' else X_REWARD
-            self.set_state_value(state, val)
+            set_state_value(state, val)
         return st_values[state]
-
-    def set_state_value(self, state, value):
-        st_visits[state] += 1
-        st_values[state] = value
 
     def greedy_action(self, state, ava_actions):
         """Return best action by current state value.
@@ -166,7 +163,6 @@ class TDAgent(object):
         """
         assert len(ava_actions) > 0
 
-        max_nval = -2
         ava_values = []
         for action in ava_actions:
             nstate = self.after_action_state(state, action)
@@ -176,7 +172,7 @@ class TDAgent(object):
             logging.debug("  nstate {} val {:0.2f} visits {}".
                           format(nstate, nval, vcnt))
 
-        val_arr =  np.array(ava_values)
+        val_arr = np.array(ava_values)
         if self.mark == 'O':
             midx = np.argwhere(val_arr == np.max(val_arr))
         else:
@@ -205,12 +201,12 @@ class TDAgent(object):
                       format(state, nstate, reward))
 
         val = self.ask_value(state)
-        expected = reward + self.gamma * self.ask_value(nstate)
-        diff = expected - val
-        nval = val  + self.alpha * diff
+        nval = self.ask_value(nstate)
+        diff = nval - val
+        val2 = val + self.alpha * diff
 
-        logging.debug("  value from {:0.2f} to {:0.2f}".format(val, nval))
-        self.set_state_value(state, nval)
+        logging.debug("  value from {:0.2f} to {:0.2f}".format(val, val2))
+        set_state_value(state, val2)
 
 
 @click.group()
@@ -265,19 +261,10 @@ def _learn(max_episode, epsilon, save_file):
             nobs, reward, done, info = env.step(action)
             agent.backup(obs, nobs, reward)
 
-            agent_win_rwd = O_REWARD if agent.mark == 'O' else X_REWARD
-            agent_lose_rwd = X_REWARD if agent.mark == 'O' else O_REWARD
-
             if done:
-                assert reward != agent_lose_rwd
                 env.show_result(False, mark, reward)
                 # set terminal state value
-                agent.set_state_value(obs, reward)
-
-                if reward == agent_win_rwd:
-                    loser = agent_by_mark(agents, next_mark(mark))
-                    loser.set_state_value(obs, agent_win_rwd)
-                break
+                set_state_value(obs, reward)
 
             _, mark = obs = nobs
 
@@ -321,7 +308,6 @@ def _play(load_file):
     start_mark = 'O'
     agents = [HumanAgent(env.action_space, 'O'), td_agent]
 
-    episode = 0
     while True:
         # start agent rotation
 
