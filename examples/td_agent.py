@@ -9,7 +9,7 @@ import click
 from tqdm import tqdm
 
 from gym_tictactoe.envs import TicTacToeEnv, set_log_level_by, tocode,\
-    agent_by_mark, next_mark, check_game_status, tomark, O_REWARD,\
+    agent_by_mark, next_mark, check_game_status, O_REWARD,\
     X_REWARD
 from examples.human_agent import HumanAgent
 
@@ -36,7 +36,6 @@ class TDAgent(object):
         self.alpha = alpha
         self.epsilon = epsilon
         self.episode = 0
-        self.turn_cnt = 0
 
     def act(self, state, ava_actions):
         return self.egreedy_policy(state, ava_actions)
@@ -98,9 +97,8 @@ class TDAgent(object):
             logging.debug("ask_value - new state {}".format(state))
             gstatus = check_game_status(state[0])
             val = DEFAULT_VALUE
+            # win
             if gstatus > 0:
-                # always called by self
-                assert tomark(gstatus) == self.mark
                 val = O_REWARD if self.mark == 'O' else X_REWARD
             set_state_value(state, val)
         return st_values[state]
@@ -200,7 +198,6 @@ def _learn(max_episode, epsilon, save_file):
         # reset agent for new episode
         for agent in agents:
             agent.episode = episode
-            agent.turn_cnt = 0
 
         env.set_start_mark(start_mark)
         obs = env.reset()
@@ -208,7 +205,6 @@ def _learn(max_episode, epsilon, save_file):
         done = False
         while not done:
             agent = agent_by_mark(agents, mark)
-            agent.turn_cnt += 1
             ava_actions = env.available_actions()
             env.show_turn(False, mark)
             action = agent.act(obs, ava_actions)
