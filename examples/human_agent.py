@@ -56,8 +56,9 @@ def play(max_episode, show_number):
         env.render()
         while not done:
             agent = agent_by_mark(agents, next_mark(mark))
-            env.print_turn(mark)
-            action = agent.act()
+            env.show_turn(True, mark)
+            ava_actions = env.available_actions()
+            action = agent.act(ava_actions)
             if action is None:
                 sys.exit()
 
@@ -66,7 +67,7 @@ def play(max_episode, show_number):
             print('')
             env.render()
             if done:
-                env.print_result(mark, reward)
+                env.show_result(True, mark, reward)
                 break
             else:
                 _, mark = obs

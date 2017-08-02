@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import click
+import random
 
 from gym_tictactoe.envs import TicTacToeEnv, agent_by_mark
 
@@ -9,16 +10,14 @@ class RandomAgent(object):
         self.action_space = action_space
         self.mark = mark
 
-    def act(self):
-        return self.action_space.sample()
+    def act(self, ava_actions):
+        return random.choice(ava_actions)
 
 
 @click.command(help="Play random agent.")
 @click.option('-e', '--episode', "max_episode", default=10, show_default=True,
               help="Episode count.")
-@click.option('-s', '--hide', is_flag=True, show_default=True,  help="Hide"
-              " progress.")
-def play(max_episode, hide):
+def play(max_episode):
     episode = 0
     env = TicTacToeEnv()
     agents = [RandomAgent(env.action_space, 'O'),
@@ -29,18 +28,16 @@ def play(max_episode, hide):
         _, mark = obs
         done = False
         while not done:
-            if not hide:
-                env.print_turn(mark)
+            env.show_turn(True, mark)
 
             agent = agent_by_mark(agents, mark)
-            action = agent.act()
+            ava_actions = env.available_actions()
+            action = agent.act(ava_actions)
             obs, reward, done, info = env.step(action)
-            if not hide:
-                env.render()
+            env.render()
 
             if done:
-                if not hide:
-                    env.print_result(mark, reward)
+                env.show_result(True, mark, reward)
                 break
             else:
                 _, mark = obs
