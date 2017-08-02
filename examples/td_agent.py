@@ -2,7 +2,6 @@
 import sys
 import random
 import logging
-import math
 from collections import defaultdict
 
 import numpy as np
@@ -22,7 +21,6 @@ EPSILON = 0.2
 
 st_values = {}
 st_visits = defaultdict(lambda: 0)
-ucb_visits = defaultdict(lambda: defaultdict(int))
 
 
 def set_state_value(state, value):
@@ -31,22 +29,17 @@ def set_state_value(state, value):
 
 
 class TDAgent(object):
-    def __init__(self, action_space, mark, policy, epsilon=EPSILON, alpha=0.4,
-                 gamma=0.9):
+    def __init__(self, action_space, mark, policy, epsilon=EPSILON, alpha=0.4):
         self.action_space = action_space
         self.mark = mark
         self.policy = policy
         self.alpha = alpha
-        self.gamma = gamma
         self.epsilon = epsilon
         self.episode = 0
         self.turn_cnt = 0
 
     def act(self, state, ava_actions):
-        if self.policy == 'egreedy':
-            return self.egreedy_policy(state, ava_actions)
-        else:
-            return self.ucb_policy(state, ava_actions)
+        return self.egreedy_policy(state, ava_actions)
 
     def egreedy_policy(self, state, ava_actions):
         """Returns action by Epsilon greedy policy.
@@ -69,43 +62,6 @@ class TDAgent(object):
             logging.debug("Exploit with eps {}".format(self.epsilon))
             action = self.greedy_action(state, ava_actions)
         return action
-
-    def ucb_policy(self, state, ava_actions):
-        """Returns action by Upper confidence bound  policy.
-
-        Return random action with epsilon probability or best action.
-
-        Args:
-            state (tuple): Board status + mark
-            ava_actions (list): Available actions
-
-        Returns:
-            int: Selected action.
-        """
-        maxk = None
-        max_action = None
-        c = 5.0  # degree of exploration
-        t = self.turn_cnt
-
-        for action in ava_actions:
-            nstate = self.after_action_state(state, action)
-            nval = abs(self.ask_value(nstate))
-            ucnt = ucb_visits[state][action]
-            if ucnt == 0:
-                max_action = action
-                break
-
-            k = nval + c * math.sqrt(math.log(t+1) / float(ucnt+1))
-            logging.debug("ucb_policy state {} action {} nval {:0.2f} ucnt {}"
-                          " k {:0.2f}".format(nstate, action, nval, ucnt, k))
-            if maxk is None or k > maxk:
-                max_action, maxk = action, k
-
-        if max_action is not None:
-            logging.debug("  selected action {} k {}".format(max_action, maxk))
-            ucb_visits[state][max_action] += 1
-
-        return max_action
 
     def random_action(self, ava_actions):
         return random.choice(ava_actions)
