@@ -261,10 +261,9 @@ def _learn(max_episode, epsilon, save_file):
             env.show_turn(False, mark)
             action = agent.act(obs, ava_actions)
 
-            # update
+            # update (no rendering)
             nobs, reward, done, info = env.step(action)
             agent.backup(obs, nobs, reward)
-            env.render(mode='ansi')
 
             agent_win_rwd = O_REWARD if agent.mark == 'O' else X_REWARD
             agent_lose_rwd = X_REWARD if agent.mark == 'O' else O_REWARD

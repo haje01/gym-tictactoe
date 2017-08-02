@@ -66,7 +66,7 @@ def check_game_status(board):
 
 
 class TicTacToeEnv(gym.Env):
-    metadata = {'render.modes': ['human', 'ansi']}
+    metadata = {'render.modes': ['human']}
 
     def __init__(self, alpha=0.02, show_number=False):
         self.action_space = spaces.Discrete(NUM_LOC)
