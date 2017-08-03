@@ -18,3 +18,5 @@ Python >= 3.5
     cd examples/
     python random_agent.py
     python human_agent.py
+    python td_agent.py
+

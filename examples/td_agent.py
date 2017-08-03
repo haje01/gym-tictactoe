@@ -8,7 +8,7 @@ import numpy as np
 import click
 from tqdm import tqdm
 
-from gym_tictactoe.envs import TicTacToeEnv, set_log_level_by, tocode,\
+from gym_tictactoe.env import TicTacToeEnv, set_log_level_by, tocode,\
     agent_by_mark, next_mark, check_game_status, O_REWARD,\
     X_REWARD
 from examples.human_agent import HumanAgent
@@ -17,7 +17,8 @@ from examples.human_agent import HumanAgent
 DEFAULT_VALUE = 0
 MAX_EPISODE = 10000
 MODEL_FILE = 'td_agent.dat'
-EPSILON = 0.2
+EPSILON = 0.1
+ALPHA = 0.4
 
 st_values = {}
 st_visits = defaultdict(lambda: 0)
@@ -29,10 +30,9 @@ def set_state_value(state, value):
 
 
 class TDAgent(object):
-    def __init__(self, action_space, mark, policy, epsilon=EPSILON, alpha=0.4):
+    def __init__(self, action_space, mark, epsilon, alpha):
         self.action_space = action_space
         self.mark = mark
-        self.policy = policy
         self.alpha = alpha
         self.epsilon = epsilon
         self.episode = 0
@@ -64,6 +64,45 @@ class TDAgent(object):
 
     def random_action(self, ava_actions):
         return random.choice(ava_actions)
+
+    def greedy_action(self, state, ava_actions):
+        """Return best action by current state value.
+
+        Evaluate each action, select best one. Tie-breaking is random.
+
+        Args:
+            state (tuple): Board status + mark
+            ava_actions (list): Available actions
+
+        Returns:
+            int: Selected action
+        """
+        assert len(ava_actions) > 0
+
+        ava_values = []
+        for action in ava_actions:
+            nstate = self.after_action_state(state, action)
+            nval = self.ask_value(nstate)
+            ava_values.append(nval)
+            vcnt = st_visits[nstate]
+            logging.debug("  nstate {} val {:0.2f} visits {}".
+                          format(nstate, nval, vcnt))
+
+        # select most right action for 'O' or 'X'
+        val_arr = np.array(ava_values)
+        if self.mark == 'O':
+            midx = np.argwhere(val_arr == np.max(val_arr))
+        else:
+            midx = np.argwhere(val_arr == np.min(val_arr))
+
+        # tie breaking by random choice
+        aidx = np.random.choice(midx.ravel())
+        logging.debug("greedy_action mark {} val_arr {} midx {} aidx {}".
+                      format(self.mark, val_arr, midx.ravel(), aidx))
+
+        action = ava_actions[aidx]
+
+        return action
 
     def after_action_state(self, state, action):
         """Execute an action and returns resulted state.
@@ -103,53 +142,15 @@ class TDAgent(object):
             set_state_value(state, val)
         return st_values[state]
 
-    def greedy_action(self, state, ava_actions):
-        """Return best action by current state value.
-
-        Evaluate each action, select best one. Tie-breaking is random.
-
-        Args:
-            state (tuple): Board status + mark
-            ava_actions (list): Available actions
-
-        Returns:
-            int: Selected action
-        """
-        assert len(ava_actions) > 0
-
-        ava_values = []
-        for action in ava_actions:
-            nstate = self.after_action_state(state, action)
-            nval = self.ask_value(nstate)
-            ava_values.append(nval)
-            vcnt = st_visits[nstate]
-            logging.debug("  nstate {} val {:0.2f} visits {}".
-                          format(nstate, nval, vcnt))
-
-        val_arr = np.array(ava_values)
-        if self.mark == 'O':
-            midx = np.argwhere(val_arr == np.max(val_arr))
-        else:
-            midx = np.argwhere(val_arr == np.min(val_arr))
-
-        # tie breaking by random choice
-        aidx = np.random.choice(midx.ravel())
-        logging.debug("greedy_action mark {} val_arr {} midx {} aidx {}".
-                      format(self.mark, val_arr, midx.ravel(), aidx))
-
-        action = ava_actions[aidx]
-
-        return action
-
     def backup(self, state, nstate, reward):
-        """Backup value by difference and learning rate.
+        """Backup value by difference and step size.
 
         Execute an action then backup Q by best value of next state.
 
         Args:
             state (tuple): Current state
             nstate (tuple): Next state
-            reward (int): Immediate reward from action. Default is 0.
+            reward (int): Immediate reward from action
         """
         logging.debug("backup state {} nstate {} reward {}".
                       format(state, nstate, reward))
@@ -174,21 +175,23 @@ def cli(ctx, verbose):
         tqdm = lambda x: x  # NOQA
 
 
-@cli.command(help="Learn TD agent.")
+@cli.command(help="Learn and save the model.")
 @click.option('-e', '--episode', "max_episode", default=MAX_EPISODE,
               show_default=True, help="Episode count.")
-@click.option('-p', '--epsilon', default=EPSILON, show_default=True,
-              help="Exploring factor.")
+@click.option('-x', '--exploring-factor', "epsilon", default=EPSILON,
+              show_default=True, help="Exploring factor.")
+@click.option('-s', '--step-size', "alpha", default=ALPHA,
+              show_default=True, help="Step size.")
 @click.option('-f', '--save-file', default=MODEL_FILE, show_default=True,
               help="Save file name.")
-def learn(max_episode, epsilon, save_file):
-    _learn(max_episode, epsilon, save_file)
+def learn(max_episode, epsilon, alpha, save_file):
+    _learn(max_episode, epsilon, alpha, save_file)
 
 
-def _learn(max_episode, epsilon, save_file):
+def _learn(max_episode, epsilon, alpha, save_file):
     env = TicTacToeEnv()
-    agents = [TDAgent(env.action_space, 'O', 'egreedy', epsilon),
-              TDAgent(env.action_space, 'X', 'egreedy', epsilon)]
+    agents = [TDAgent(env.action_space, 'O', epsilon, alpha),
+              TDAgent(env.action_space, 'X', epsilon, alpha)]
 
     start_mark = 'O'
     for i in tqdm(range(max_episode)):
@@ -245,24 +248,24 @@ def load_states(filename):
             st_visits[state] = vcnt
 
 
-@cli.command(help="Play with model.")
+@cli.command(help="Play with saved model.")
 @click.option('-f', '--load-file', default=MODEL_FILE, show_default=True,
               help="Load file name.")
-def play(load_file):
-    _play(load_file)
+@click.option('-n', '--show-number', is_flag=True, default=False,
+              show_default=True, help="Show location number in the board.")
+def play(load_file, show_number):
+    _play(load_file, show_number)
 
 
-def _play(load_file):
+def _play(load_file, show_number):
     load_states(load_file)
-    env = TicTacToeEnv()
-    td_agent = TDAgent(env.action_space, 'X', 'egreedy')
-    td_agent.epsilon = 0  # prevent exploring
+    env = TicTacToeEnv(show_number=show_number)
+    td_agent = TDAgent(env.action_space, 'X', 0, 0)  # prevent exploring
     start_mark = 'O'
     agents = [HumanAgent(env.action_space, 'O'), td_agent]
 
     while True:
         # start agent rotation
-
         env.set_start_mark(start_mark)
         obs = env.reset()
         _, mark = obs
@@ -301,13 +304,17 @@ def _play(load_file):
 @cli.command(help="Learn and play")
 @click.option('-e', '--episode', "max_episode", default=MAX_EPISODE,
               show_default=True, help="Episode count.")
-@click.option('-p', '--epsilon', default=EPSILON, show_default=True,
-              help="Exploring factor.")
+@click.option('-x', '--exploring-factor', "epsilon", default=EPSILON,
+              show_default=True, help="Exploring factor.")
+@click.option('-s', '--step-size', "alpha", default=ALPHA,
+              show_default=True, help="Step size.")
 @click.option('-f', '--model-file', default=MODEL_FILE, show_default=True,
               help="Model file name.")
-def learnplay(max_episode, epsilon, model_file):
-    _learn(max_episode, epsilon, model_file)
-    _play(model_file)
+@click.option('-n', '--show-number', is_flag=True, default=False,
+              show_default=True, help="Show location number in the board.")
+def learnplay(max_episode, epsilon, alpha, model_file, show_number):
+    _learn(max_episode, epsilon, alpha, model_file)
+    _play(model_file, show_number)
 
 
 if __name__ == '__main__':

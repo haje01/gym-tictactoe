@@ -4,7 +4,7 @@ import logging
 
 import click
 
-from gym_tictactoe.envs import TicTacToeEnv, set_log_level_by, agent_by_mark,\
+from gym_tictactoe.env import TicTacToeEnv, set_log_level_by, agent_by_mark,\
     next_mark
 
 

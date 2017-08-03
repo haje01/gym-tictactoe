@@ -7,7 +7,7 @@ CODE_MARK_MAP = {0: ' ', 1: 'O', 2: 'X'}
 NUM_LOC = 9
 O_REWARD = 1
 X_REWARD = -1
-DRAW_REWARD = 0
+NO_REWARD = 0
 
 LOG_FMT = logging.Formatter('%(levelname)s '
                             '[%(filename)s:%(lineno)d] %(message)s',
@@ -104,7 +104,7 @@ class TicTacToeEnv(gym.Env):
         if self.done:
             return self._get_obs(), 0, True, None
 
-        reward = DRAW_REWARD
+        reward = NO_REWARD
         # place
         self.board[loc] = tocode(self.mark)
         status = check_game_status(self.board)

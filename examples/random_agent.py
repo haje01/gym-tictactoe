@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-import click
 import random
 
-from gym_tictactoe.envs import TicTacToeEnv, agent_by_mark
+from gym_tictactoe.env import TicTacToeEnv, agent_by_mark
 
 
 class RandomAgent(object):
@@ -14,10 +13,7 @@ class RandomAgent(object):
         return random.choice(ava_actions)
 
 
-@click.command(help="Play random agent.")
-@click.option('-e', '--episode', "max_episode", default=10, show_default=True,
-              help="Episode count.")
-def play(max_episode):
+def play(max_episode=2):
     episode = 0
     env = TicTacToeEnv()
     agents = [RandomAgent(env.action_space, 'O'),
