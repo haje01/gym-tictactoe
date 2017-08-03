@@ -4,13 +4,11 @@ import logging
 
 import click
 
-from gym_tictactoe.env import TicTacToeEnv, set_log_level_by, agent_by_mark,\
-    next_mark
+from gym_tictactoe.env import TicTacToeEnv, agent_by_mark, next_mark
 
 
 class HumanAgent(object):
-    def __init__(self, action_space, mark):
-        self.action_space = action_space
+    def __init__(self, mark):
         self.mark = mark
 
     def act(self, ava_actions):
@@ -30,26 +28,15 @@ class HumanAgent(object):
         return action
 
 
-@click.group()
-@click.option('-v', '--verbose', count=True, help="Increase verbosity.")
-@click.pass_context
-def cli(ctx, verbose):
-    level = set_log_level_by(verbose)
-    logging.debug("log level {}".format(level))
-
-
-@cli.command(help="Play human agent.")
-@click.option('-e', '--episode', "max_episode", default=10, show_default=True,
-              help="Episode count.")
+@click.command(help="Play human agent.")
 @click.option('-n', '--show-number', is_flag=True, default=False,
               show_default=True, help="Show location number in the board.")
-def play(max_episode, show_number):
-    episode = 0
+def play(show_number):
     env = TicTacToeEnv(show_number=show_number)
-    agents = [HumanAgent(env.action_space, 'O'),
-              HumanAgent(env.action_space, 'X')]
+    agents = [HumanAgent('O'),
+              HumanAgent('X')]
 
-    while episode < max_episode:
+    while True:
         obs = env.reset()
         _, mark = obs
         done = False
@@ -75,4 +62,4 @@ def play(max_episode, show_number):
 
 
 if __name__ == '__main__':
-    cli()
+    play()

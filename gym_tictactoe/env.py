@@ -32,6 +32,24 @@ def agent_by_mark(agents, mark):
             return agent
 
 
+def after_action_state(obs, action):
+    """Execute an action and returns resulted state.
+
+    Args:
+        obs (tuple): Board status + mark
+        action (int): Action to run
+
+    Returns:
+        tuple: New state
+    """
+
+    board, mark = obs
+    nboard = list(board[:])
+    nboard[action] = tocode(mark)
+    nboard = tuple(nboard)
+    return nboard, next_mark(mark)
+
+
 def check_game_status(board):
     """Return game status by current board status.
 
