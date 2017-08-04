@@ -20,7 +20,7 @@ DEFAULT_VALUE = 0
 MAX_EPISODE = 10000
 MAX_BENCH_EPISODE = 1000
 MODEL_FILE = 'td_agent.dat'
-EPSILON = 0.1
+EPSILON = 0.3
 ALPHA = 0.4
 
 st_values = {}
@@ -37,7 +37,7 @@ class TDAgent(object):
         self.mark = mark
         self.alpha = alpha
         self.epsilon = epsilon
-        self.episode = 0
+        self.episode_rate = 1.0
 
     def act(self, state, ava_actions):
         return self.egreedy_policy(state, ava_actions)
@@ -56,7 +56,7 @@ class TDAgent(object):
         """
         logging.debug("egreedy_policy for '{}'".format(self.mark))
         e = random.random()
-        if e < self.epsilon:
+        if e < self.epsilon * self.episode_rate:
             logging.debug("Explore with eps {}".format(self.epsilon))
             action = self.random_action(ava_actions)
         else:
@@ -185,7 +185,7 @@ def _learn(max_episode, epsilon, alpha, save_file):
 
         # reset agent for new episode
         for agent in agents:
-            agent.episode = episode
+            agent.episode_rate = episode / float(max_episode)
 
         env.set_start_mark(start_mark)
         obs = env.reset()
