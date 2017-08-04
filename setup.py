@@ -6,6 +6,6 @@ if sys.version_info < (3,5):
 
 setup(name='gym_tictactoe',
       version='0.0.1',
-      install_requires=['gym', 'numpy', 'click', 'tqdm'],
+      install_requires=['gym', 'click', 'tqdm'],
       packages=find_packages()
       )
