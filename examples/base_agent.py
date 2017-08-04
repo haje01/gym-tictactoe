@@ -9,9 +9,9 @@ class BaseAgent(object):
     def __init__(self, mark):
         self.mark = mark
 
-    def act(self, obs, ava_actions):
+    def act(self, state, ava_actions):
         for action in ava_actions:
-            nstate = after_action_state(obs, action)
+            nstate = after_action_state(state, action)
             gstatus = check_game_status(nstate[0])
             if gstatus > 0:
                 if tomark(gstatus) == self.mark:
@@ -28,23 +28,23 @@ def play(max_episode=10):
 
     while episode < max_episode:
         env.set_start_mark(start_mark)
-        obs = env.reset()
-        _, mark = obs
+        state = env.reset()
+        _, mark = state
         done = False
         while not done:
             env.show_turn(True, mark)
 
             agent = agent_by_mark(agents, mark)
             ava_actions = env.available_actions()
-            action = agent.act(obs, ava_actions)
-            obs, reward, done, info = env.step(action)
+            action = agent.act(state, ava_actions)
+            state, reward, done, info = env.step(action)
             env.render()
 
             if done:
                 env.show_result(True, mark, reward)
                 break
             else:
-                _, mark = obs
+                _, mark = state
 
         # rotate start
         start_mark = next_mark(start_mark)

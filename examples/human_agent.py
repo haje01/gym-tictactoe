@@ -37,8 +37,8 @@ def play(show_number):
               HumanAgent('X')]
 
     while True:
-        obs = env.reset()
-        _, mark = obs
+        state = env.reset()
+        _, mark = state
         done = False
         env.render()
         while not done:
@@ -49,7 +49,7 @@ def play(show_number):
             if action is None:
                 sys.exit()
 
-            obs, reward, done, info = env.step(action)
+            state, reward, done, info = env.step(action)
 
             print('')
             env.render()
@@ -57,7 +57,7 @@ def play(show_number):
                 env.show_result(True, mark, reward)
                 break
             else:
-                _, mark = obs
+                _, mark = state
         episode += 1
 
 

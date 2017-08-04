@@ -188,25 +188,25 @@ def _learn(max_episode, epsilon, alpha, save_file):
             agent.episode_rate = episode / float(max_episode)
 
         env.set_start_mark(start_mark)
-        obs = env.reset()
-        _, mark = obs
+        state = env.reset()
+        _, mark = state
         done = False
         while not done:
             agent = agent_by_mark(agents, mark)
             ava_actions = env.available_actions()
             env.show_turn(False, mark)
-            action = agent.act(obs, ava_actions)
+            action = agent.act(state, ava_actions)
 
             # update (no rendering)
-            nobs, reward, done, info = env.step(action)
-            agent.backup(obs, nobs, reward)
+            nstate, reward, done, info = env.step(action)
+            agent.backup(state, nstate, reward)
 
             if done:
                 env.show_result(False, mark, reward)
                 # set terminal state value
-                set_state_value(obs, reward)
+                set_state_value(state, reward)
 
-            _, mark = obs = nobs
+            _, mark = state = nstate
 
         # rotate start
         start_mark = next_mark(start_mark)
@@ -260,8 +260,8 @@ def _play(load_file, vs_agent, show_number):
     while True:
         # start agent rotation
         env.set_start_mark(start_mark)
-        obs = env.reset()
-        _, mark = obs
+        state = env.reset()
+        _, mark = state
         done = False
 
         # show start board for human agent
@@ -279,16 +279,16 @@ def _play(load_file, vs_agent, show_number):
                 if action is None:
                     sys.exit()
             else:
-                action = agent.act(obs, ava_actions)
+                action = agent.act(state, ava_actions)
 
-            obs, reward, done, info = env.step(action)
+            state, reward, done, info = env.step(action)
 
             env.render(mode='human')
             if done:
                 env.show_result(True, mark, reward)
                 break
             else:
-                _, mark = obs
+                _, mark = state
 
         # rotation start
         start_mark = next_mark(start_mark)
@@ -335,14 +335,14 @@ def _bench(max_episode, model_file):
     results = []
     for i in tqdm(range(max_episode)):
         env.set_start_mark(start_mark)
-        obs = env.reset()
-        _, mark = obs
+        state = env.reset()
+        _, mark = state
         done = False
         while not done:
             agent = agent_by_mark(agents, mark)
             ava_actions = env.available_actions()
-            action = agent.act(obs, ava_actions)
-            obs, reward, done, info = env.step(action)
+            action = agent.act(state, ava_actions)
+            state, reward, done, info = env.step(action)
             if show:
                 env.show_turn(True, mark)
                 env.render(mode='human')
@@ -353,7 +353,7 @@ def _bench(max_episode, model_file):
                 results.append(reward)
                 break
             else:
-                _, mark = obs
+                _, mark = state
 
         # rotation start
         start_mark = next_mark(start_mark)
