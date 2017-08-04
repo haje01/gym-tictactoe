@@ -377,7 +377,7 @@ def _bench(max_episode, model_file, show):
     o_win = results.count(1)
     x_win = results.count(-1)
     draw = len(results) - o_win - x_win
-    mfile = model_file.replace(CWD, '')
+    mfile = model_file.replace(CWD + os.sep, '')
     minfo.update(dict(base_win=o_win, td_win=x_win, draw=draw, model_file=mfile))
     result = json.dumps(minfo)
     if show:
@@ -402,25 +402,32 @@ def learnplay(max_episode, epsilon, alpha, model_file, show_number):
 
 
 @cli.command(help="Grid search Hyper-parameters.")
-@click.option('-t', '--test-mode', is_flag=True, default=False,
-              show_default=True, help="Using small ranges for testing.")
-def gridsearch(test_mode):
+@click.option('-g', '--granularity', type=click.Choice(['high', 'mid', 'low']),
+              default='mid', show_default=True, help="Grid search"
+              " granularity.")
+def gridsearch(granularity):
     # disable sub-process's progressbar
     global tqdm
     tqdm = lambda x: x
     st = time.time()
 
-    # target parameter and rages
-    epsilons = [e * 0.01 for e in range(8, 25, 2)]
-    alphas = [a * 0.1 for a in range(2, 8)]
-    episodes = [e for e in range(8000, 31000, 3000)]
-
-    if test_mode:
-        # override for test mode
+    if granularity == 'high':
+        # high range
+        epsilons = [e * 0.01 for e in range(8, 25, 2)]
+        alphas = [a * 0.1 for a in range(2, 8)]
+        episodes = [e for e in range(8000, 31000, 3000)]
+    elif granularity == 'mid':
+        # mid range
+        epsilons = [e * 0.01 for e in range(10, 20, 5)]
+        alphas = [a * 0.1 for a in range(3, 7)]
+        episodes = [e for e in range(10000, 30000, 5000)]
+    else:
+        # test range
         epsilons = [e * 0.01 for e in range(9, 13, 2)]
         alphas = [a * 0.1 for a in range(4, 6)]
         episodes = [e for e in range(1000, 2000, 300)]
 
+    alphas = [round(a, 2) for a in alphas]
     _args = list(product(episodes, epsilons, alphas))
     args = []
     for i, arg in enumerate(_args):
@@ -452,7 +459,7 @@ def gridsearch(test_mode):
             print(r)
             f.write('{}\n'.format(r))
 
-    print("Done in {:0.2f} seconds".format(time.time() - st))
+    print("Finished in {:0.2f} seconds".format(time.time() - st))
 
 
 if __name__ == '__main__':
