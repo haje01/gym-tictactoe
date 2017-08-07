@@ -21,11 +21,11 @@ from examples.base_agent import BaseAgent
 
 
 DEFAULT_VALUE = 0
-MAX_EPISODE = 10000
-MAX_BENCH_EPISODE = 1000
+EPISODE_CNT = 20000
+BENCH_EPISODE_CNT = 3000
 MODEL_FILE = 'td_agent.dat'
-EPSILON = 0.3
-ALPHA = 0.4
+EPSILON = 0.1
+ALPHA = 0.3
 CWD = os.path.dirname(os.path.abspath(__file__))
 
 st_values = {}
@@ -170,7 +170,7 @@ def cli(ctx, verbose):
 
 
 @cli.command(help="Learn and save the model.")
-@click.option('-e', '--episode', "max_episode", default=MAX_EPISODE,
+@click.option('-e', '--episode', "max_episode", default=EPISODE_CNT,
               show_default=True, help="Episode count.")
 @click.option('-x', '--exploring-factor', "epsilon", default=EPSILON,
               show_default=True, help="Exploring factor.")
@@ -239,7 +239,7 @@ def save_model(save_file, max_episode, epsilon, alpha):
 def load_model(filename):
     with open(filename, 'rb') as f:
         # read model info
-        info = json.loads(f.readline())
+        info = json.loads(f.readline().decode('ascii'))
         for line in f:
             elms = line.decode('ascii').split('\t')
             state = eval(elms[0])
@@ -304,10 +304,10 @@ def _play(load_file, vs_agent, show_number):
 
 
 @cli.command(help="Learn and bench.")
-@click.option('-e', '--learn-episode', "max_episode", default=MAX_EPISODE,
+@click.option('-e', '--learn-episode', "max_episode", default=EPISODE_CNT,
               show_default=True, help="Learn episode count.")
 @click.option('-b', '--bench-episode', "max_bench_episode",
-              default=MAX_BENCH_EPISODE, show_default=True, help="Bench episode"
+              default=BENCH_EPISODE_CNT, show_default=True, help="Bench episode"
               " count.")
 @click.option('-x', '--exploring-factor', "epsilon", default=EPSILON,
               show_default=True, help="Exploring factor.")
@@ -329,7 +329,7 @@ def _learnbench(max_episode, max_bench_episode, epsilon, alpha, model_file, show
 
 
 @cli.command(help="Bench agents with simple agent.")
-@click.option('-e', '--episode', "max_episode", default=MAX_BENCH_EPISODE,
+@click.option('-e', '--episode', "max_episode", default=BENCH_EPISODE_CNT,
               show_default=True, help="Episode count.")
 @click.option('-f', '--model-file', default=MODEL_FILE, show_default=True,
               help="Model data file name.")
@@ -337,7 +337,7 @@ def bench(model_file, max_episode):
     _bench(max_episode, model_file)
 
 
-def _bench(max_episode, model_file, show):
+def _bench(max_episode, model_file, show_result=True):
     minfo = load_model(model_file)
     agents = [BaseAgent('O'), TDAgent('X', 0, 0)]
     show = False
@@ -380,13 +380,14 @@ def _bench(max_episode, model_file, show):
     mfile = model_file.replace(CWD + os.sep, '')
     minfo.update(dict(base_win=o_win, td_win=x_win, draw=draw, model_file=mfile))
     result = json.dumps(minfo)
-    if show:
+
+    if show_result:
         print(result)
     return result
 
 
 @cli.command(help="Learn and play.")
-@click.option('-e', '--episode', "max_episode", default=MAX_EPISODE,
+@click.option('-e', '--episode', "max_episode", default=EPISODE_CNT,
               show_default=True, help="Episode count.")
 @click.option('-x', '--exploring-factor', "epsilon", default=EPSILON,
               show_default=True, help="Exploring factor.")
@@ -412,17 +413,17 @@ def gridsearch(granularity):
     st = time.time()
 
     if granularity == 'high':
-        # high range
+        # high
         epsilons = [e * 0.01 for e in range(8, 25, 2)]
         alphas = [a * 0.1 for a in range(2, 8)]
         episodes = [e for e in range(8000, 31000, 3000)]
     elif granularity == 'mid':
-        # mid range
+        # mid
         epsilons = [e * 0.01 for e in range(10, 20, 5)]
         alphas = [a * 0.1 for a in range(3, 7)]
         episodes = [e for e in range(10000, 30000, 5000)]
     else:
-        # test range
+        # low
         epsilons = [e * 0.01 for e in range(9, 13, 2)]
         alphas = [a * 0.1 for a in range(4, 6)]
         episodes = [e for e in range(1000, 2000, 300)]
@@ -432,12 +433,12 @@ def gridsearch(granularity):
     args = []
     for i, arg in enumerate(_args):
         arg = list(arg)
-        arg.insert(1, 1000)  # bench episode count
+        arg.insert(1, BENCH_EPISODE_CNT)  # bench episode count
         arg.append(os.path.join(CWD, 'gsmodels/model_{:03d}.dat'.format(i)))
         arg.append(False)  # supress print
         args.append(arg)  # model file name
-
     prev_left = total = len(args)
+
     print("Grid search for {} combinations.".format(total))
     pbar = _tqdm(total=total)
     pool = Pool()
@@ -454,6 +455,7 @@ def gridsearch(granularity):
     ucnt = prev_left - result._number_left
     pbar.update(ucnt)
     pbar.close()
+
     with open(os.path.join(CWD, 'gsmodels/result.json'), 'wt') as f:
         for r in result.get():
             print(r)

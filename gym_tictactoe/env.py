@@ -207,10 +207,6 @@ def set_log_level_by(verbosity):
         handler = logging.StreamHandler()
         logger.addHandler(handler)
 
-    fhandler = logging.FileHandler('log.txt')
-    logger.addHandler(fhandler)
-
-    for handler in logger.handlers:
-        handler.setLevel(level)
-        handler.setFormatter(LOG_FMT)
+    handler.setLevel(level)
+    handler.setFormatter(LOG_FMT)
     return level
