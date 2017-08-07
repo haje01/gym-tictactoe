@@ -418,7 +418,7 @@ def gridsearch(quality, rtest_cnt):
 
 
 def _gridsearch_reproduce(rtest_cnt):
-    print("Calculate reproducibility score.")
+    print("Reproducibility test.")
     with open(os.path.join(CWD, 'gsmodels/result.json'), 'rt') as fr:
         df = pd.DataFrame([json.loads(line) for line in fr])
         top10_df = df.sort_values(['base_win', 'max_episode'])[:10]
@@ -426,26 +426,26 @@ def _gridsearch_reproduce(rtest_cnt):
     index = []
     vals = []
     # for each candidate
+    pbar = _tqdm(total = len(top10_df) * rtest_cnt)
     for idx, row in top10_df.iterrows():
         index.append(idx)
         base_win_sum = 0
         total_play = 0
         # bench repeatedly
         for i in range(rtest_cnt):
+            pbar.update()
             res = _bench(BENCH_EPISODE_CNT, os.path.join(CWD, row.model_file),
                          False)
             res = json.loads(res)
             base_win_sum += res['base_win']
             total_play += BENCH_EPISODE_CNT
-        base_win_pct = float(base_win_sum) / rtest_cnt / total_play * 100
-        vals.append(round(base_win_pct, 2))
+        lose_pct = float(base_win_sum) / rtest_cnt / total_play * 100
+        vals.append(round(lose_pct, 2))
 
-    top10_df['base_win_pct'] = pd.Series(vals, index=index)
+    top10_df['lose_pct'] = pd.Series(vals, index=index)
 
-    df = top10_df.sort_values(['base_win_pct',
-                               'max_episode']).reset_index()[:5]
-    print(df[['base_win_pct', 'max_episode', 'alpha', 'epsilon',
-              'model_file']])
+    df = top10_df.sort_values(['lose_pct', 'max_episode']).reset_index()[:5]
+    print(df[['lose_pct', 'max_episode', 'alpha', 'epsilon', 'model_file']])
 
 
 def _gridsearch_candidate(quality):
