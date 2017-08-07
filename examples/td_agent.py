@@ -408,7 +408,7 @@ def learnplay(max_episode, epsilon, alpha, model_file, show_number):
 @click.option('-q', '--quality', type=click.Choice(['high', 'mid', 'low']),
               default='mid', show_default=True, help="Grid search"
               " quality.")
-@click.option('-r', '--reproduce-test-count', "rtest_cnt", default=1,
+@click.option('-r', '--reproduce-test', "rtest_cnt", default=3,
               show_default=True, help="Reproducibility test count.")
 def gridsearch(quality, rtest_cnt):
     st = time.time()
