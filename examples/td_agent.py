@@ -425,21 +425,26 @@ def _gridsearch_reproduce(rtest_cnt):
 
     index = []
     vals = []
+    # for each candidate
     for idx, row in top10_df.iterrows():
         index.append(idx)
         base_win_sum = 0
+        total_play = 0
+        # bench repeatedly
         for i in range(rtest_cnt):
             res = _bench(BENCH_EPISODE_CNT, os.path.join(CWD, row.model_file),
                          False)
             res = json.loads(res)
             base_win_sum += res['base_win']
-        vals.append(base_win_sum / float(rtest_cnt))
+            total_play += BENCH_EPISODE_CNT
+        base_win_pct = float(base_win_sum) / rtest_cnt / total_play * 100
+        vals.append(round(base_win_pct, 2))
 
-    top10_df['avg_base_win'] = pd.Series(vals, index=index)
+    top10_df['base_win_pct'] = pd.Series(vals, index=index)
 
-    df = top10_df.sort_values(['avg_base_win',
+    df = top10_df.sort_values(['base_win_pct',
                                'max_episode']).reset_index()[:5]
-    print(df[['avg_base_win', 'max_episode', 'alpha', 'epsilon',
+    print(df[['base_win_pct', 'max_episode', 'alpha', 'epsilon',
               'model_file']])
 
 
