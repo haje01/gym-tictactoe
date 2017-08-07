@@ -250,7 +250,7 @@ def load_model(filename):
     return info
 
 
-@cli.command(help="Play with saved model.")
+@cli.command(help="Play with human.")
 @click.option('-f', '--load-file', default=MODEL_FILE, show_default=True,
               help="Load file name.")
 @click.option('-n', '--show-number', is_flag=True, default=False,
@@ -303,7 +303,7 @@ def _play(load_file, vs_agent, show_number):
         start_mark = next_mark(start_mark)
 
 
-@cli.command(help="Learn and bench.")
+@cli.command(help="Learn and benchmark.")
 @click.option('-e', '--learn-episode', "max_episode", default=EPISODE_CNT,
               show_default=True, help="Learn episode count.")
 @click.option('-b', '--bench-episode', "max_bench_episode",
@@ -329,7 +329,7 @@ def _learnbench(max_episode, max_bench_episode, epsilon, alpha, model_file,
     return _bench(max_bench_episode, model_file, show)
 
 
-@cli.command(help="Bench agents with simple agent.")
+@cli.command(help="Benchmark agent with base agent.")
 @click.option('-e', '--episode', "max_episode", default=BENCH_EPISODE_CNT,
               show_default=True, help="Episode count.")
 @click.option('-f', '--model-file', default=MODEL_FILE, show_default=True,
@@ -388,7 +388,7 @@ def _bench(max_episode, model_file, show_result=True):
     return result
 
 
-@cli.command(help="Learn and play.")
+@cli.command(help="Learn and play with human.")
 @click.option('-e', '--episode', "max_episode", default=EPISODE_CNT,
               show_default=True, help="Episode count.")
 @click.option('-x', '--exploring-factor', "epsilon", default=EPSILON,
@@ -404,11 +404,11 @@ def learnplay(max_episode, epsilon, alpha, model_file, show_number):
     _play(model_file, HumanAgent('O', show_number))
 
 
-@cli.command(help="Grid search Hyper-parameters.")
+@cli.command(help="Grid search hyper-parameters.")
 @click.option('-q', '--quality', type=click.Choice(['high', 'mid', 'low']),
               default='mid', show_default=True, help="Grid search"
               " quality.")
-@click.option('-r', '--reproduce-test', "rtest_cnt", default=3,
+@click.option('-r', '--reproduce-test', "rtest_cnt", default=5,
               show_default=True, help="Reproducibility test count.")
 def gridsearch(quality, rtest_cnt):
     st = time.time()
@@ -425,7 +425,7 @@ def _gridsearch_reproduce(rtest_cnt):
 
     index = []
     vals = []
-    for idx, row in tqdm(top10_df.iterrows()):
+    for idx, row in top10_df.iterrows():
         index.append(idx)
         base_win_sum = 0
         for i in range(rtest_cnt):
@@ -437,7 +437,8 @@ def _gridsearch_reproduce(rtest_cnt):
 
     top10_df['avg_base_win'] = pd.Series(vals, index=index)
 
-    df = top10_df.sort_values(['avg_base_win', 'max_episode']).reset_index()
+    df = top10_df.sort_values(['avg_base_win',
+                               'max_episode']).reset_index()[:5]
     print(df[['avg_base_win', 'max_episode', 'alpha', 'epsilon',
               'model_file']])
 
@@ -474,7 +475,7 @@ def _gridsearch_candidate(quality):
         args.append(arg)  # model file name
     prev_left = total = len(args)
 
-    print("Grid search for {} combinations.".format(total))
+    print("Grid search for {} parameter combinations.".format(total))
     pbar = _tqdm(total=total)
     pool = Pool()
     result = pool.starmap_async(_learnbench, args)
