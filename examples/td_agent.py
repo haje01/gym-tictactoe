@@ -13,9 +13,8 @@ import click
 from tqdm import tqdm as _tqdm
 tqdm = _tqdm
 
-from gym_tictactoe.env import TicTacToeEnv, set_log_level_by, tocode,\
-    agent_by_mark, next_mark, check_game_status, after_action_state, O_REWARD,\
-    X_REWARD
+from gym_tictactoe.env import TicTacToeEnv, set_log_level_by, agent_by_mark,\
+    next_mark, check_game_status, after_action_state, O_REWARD, X_REWARD
 from examples.human_agent import HumanAgent
 from examples.base_agent import BaseAgent
 
@@ -307,8 +306,8 @@ def _play(load_file, vs_agent, show_number):
 @click.option('-e', '--learn-episode', "max_episode", default=EPISODE_CNT,
               show_default=True, help="Learn episode count.")
 @click.option('-b', '--bench-episode', "max_bench_episode",
-              default=BENCH_EPISODE_CNT, show_default=True, help="Bench episode"
-              " count.")
+              default=BENCH_EPISODE_CNT, show_default=True, help="Bench "
+              "episode count.")
 @click.option('-x', '--exploring-factor', "epsilon", default=EPSILON,
               show_default=True, help="Exploring factor.")
 @click.option('-s', '--step-size', "alpha", default=ALPHA,
@@ -319,7 +318,8 @@ def learnbench(max_episode, max_bench_episode, epsilon, alpha, model_file):
     _learnbench(max_episode, max_bench_episode, epsilon, alpha, model_file)
 
 
-def _learnbench(max_episode, max_bench_episode, epsilon, alpha, model_file, show=True):
+def _learnbench(max_episode, max_bench_episode, epsilon, alpha, model_file,
+                show=True):
     if show:
         print("Learning...")
     _learn(max_episode, epsilon, alpha, model_file)
@@ -378,7 +378,8 @@ def _bench(max_episode, model_file, show_result=True):
     x_win = results.count(-1)
     draw = len(results) - o_win - x_win
     mfile = model_file.replace(CWD + os.sep, '')
-    minfo.update(dict(base_win=o_win, td_win=x_win, draw=draw, model_file=mfile))
+    minfo.update(dict(base_win=o_win, td_win=x_win, draw=draw,
+                      model_file=mfile))
     result = json.dumps(minfo)
 
     if show_result:
@@ -403,21 +404,21 @@ def learnplay(max_episode, epsilon, alpha, model_file, show_number):
 
 
 @cli.command(help="Grid search Hyper-parameters.")
-@click.option('-g', '--granularity', type=click.Choice(['high', 'mid', 'low']),
+@click.option('-q', '--quality', type=click.Choice(['high', 'mid', 'low']),
               default='mid', show_default=True, help="Grid search"
-              " granularity.")
-def gridsearch(granularity):
+              " quality.")
+def gridsearch(quality):
     # disable sub-process's progressbar
     global tqdm
-    tqdm = lambda x: x
+    tqdm = lambda x: x  # NOQA
     st = time.time()
 
-    if granularity == 'high':
+    if quality == 'high':
         # high
         epsilons = [e * 0.01 for e in range(8, 25, 2)]
         alphas = [a * 0.1 for a in range(2, 8)]
         episodes = [e for e in range(8000, 31000, 3000)]
-    elif granularity == 'mid':
+    elif quality == 'mid':
         # mid
         epsilons = [e * 0.01 for e in range(10, 20, 5)]
         alphas = [a * 0.1 for a in range(3, 7)]
