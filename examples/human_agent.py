@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import sys
-import logging
 
 import click
 
@@ -35,7 +34,7 @@ def play(show_number):
     env = TicTacToeEnv(show_number=show_number)
     agents = [HumanAgent('O'),
               HumanAgent('X')]
-
+    episode = 0
     while True:
         state = env.reset()
         _, mark = state
