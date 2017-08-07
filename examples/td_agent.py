@@ -9,6 +9,7 @@ from collections import defaultdict
 from itertools import product
 from multiprocessing import Pool
 
+import pandas as pd
 import click
 from tqdm import tqdm as _tqdm
 tqdm = _tqdm
@@ -407,11 +408,44 @@ def learnplay(max_episode, epsilon, alpha, model_file, show_number):
 @click.option('-q', '--quality', type=click.Choice(['high', 'mid', 'low']),
               default='mid', show_default=True, help="Grid search"
               " quality.")
-def gridsearch(quality):
+@click.option('-r', '--reproduce-test-count', "rtest_cnt", default=1,
+              show_default=True, help="Reproducibility test count.")
+def gridsearch(quality, rtest_cnt):
+    st = time.time()
+    _gridsearch_candidate(quality)
+    _gridsearch_reproduce(rtest_cnt)
+    print("Finished in {:0.2f} seconds".format(time.time() - st))
+
+
+def _gridsearch_reproduce(rtest_cnt):
+    print("Calculate reproducibility score.")
+    with open(os.path.join(CWD, 'gsmodels/result.json'), 'rt') as fr:
+        df = pd.DataFrame([json.loads(line) for line in fr])
+        top10_df = df.sort_values(['base_win', 'max_episode'])[:10]
+
+    index = []
+    vals = []
+    for idx, row in tqdm(top10_df.iterrows()):
+        index.append(idx)
+        base_win_sum = 0
+        for i in range(rtest_cnt):
+            res = _bench(BENCH_EPISODE_CNT, os.path.join(CWD, row.model_file),
+                         False)
+            res = json.loads(res)
+            base_win_sum += res['base_win']
+        vals.append(base_win_sum / float(rtest_cnt))
+
+    top10_df['avg_base_win'] = pd.Series(vals, index=index)
+
+    df = top10_df.sort_values(['avg_base_win', 'max_episode']).reset_index()
+    print(df[['avg_base_win', 'max_episode', 'alpha', 'epsilon',
+              'model_file']])
+
+
+def _gridsearch_candidate(quality):
     # disable sub-process's progressbar
     global tqdm
     tqdm = lambda x: x  # NOQA
-    st = time.time()
 
     if quality == 'high':
         # high
@@ -459,10 +493,7 @@ def gridsearch(quality):
 
     with open(os.path.join(CWD, 'gsmodels/result.json'), 'wt') as f:
         for r in result.get():
-            print(r)
             f.write('{}\n'.format(r))
-
-    print("Finished in {:0.2f} seconds".format(time.time() - st))
 
 
 if __name__ == '__main__':
