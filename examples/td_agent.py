@@ -170,11 +170,11 @@ def cli(ctx, verbose):
 
 
 @cli.command(help="Learn and save the model.")
-@click.option('-e', '--episode', "max_episode", default=EPISODE_CNT,
+@click.option('-p', '--episode', "max_episode", default=EPISODE_CNT,
               show_default=True, help="Episode count.")
-@click.option('-x', '--exploring-factor', "epsilon", default=EPSILON,
+@click.option('-e', '--epsilon', "epsilon", default=EPSILON,
               show_default=True, help="Exploring factor.")
-@click.option('-s', '--step-size', "alpha", default=ALPHA,
+@click.option('-a', '--alpha', "alpha", default=ALPHA,
               show_default=True, help="Step size.")
 @click.option('-f', '--save-file', default=MODEL_FILE, show_default=True,
               help="Save model data as file name.")
@@ -254,7 +254,7 @@ def load_model(filename):
 @click.option('-f', '--load-file', default=MODEL_FILE, show_default=True,
               help="Load file name.")
 @click.option('-n', '--show-number', is_flag=True, default=False,
-              show_default=True, help="Show location number in the board.")
+              show_default=True, help="Show location number when play.")
 def play(load_file, show_number):
     _play(load_file, HumanAgent('O'), show_number)
 
@@ -304,14 +304,14 @@ def _play(load_file, vs_agent, show_number):
 
 
 @cli.command(help="Learn and benchmark.")
-@click.option('-e', '--learn-episode', "max_episode", default=EPISODE_CNT,
+@click.option('-l', '--learn-episode', "max_episode", default=EPISODE_CNT,
               show_default=True, help="Learn episode count.")
 @click.option('-b', '--bench-episode', "max_bench_episode",
               default=BENCH_EPISODE_CNT, show_default=True, help="Bench "
               "episode count.")
-@click.option('-x', '--exploring-factor', "epsilon", default=EPSILON,
+@click.option('-e', '--epsilon', "epsilon", default=EPSILON,
               show_default=True, help="Exploring factor.")
-@click.option('-s', '--step-size', "alpha", default=ALPHA,
+@click.option('-a', '--alpha', "alpha", default=ALPHA,
               show_default=True, help="Step size.")
 @click.option('-f', '--model-file', default=MODEL_FILE, show_default=True,
               help="Model data file name.")
@@ -330,7 +330,7 @@ def _learnbench(max_episode, max_bench_episode, epsilon, alpha, model_file,
 
 
 @cli.command(help="Benchmark agent with base agent.")
-@click.option('-e', '--episode', "max_episode", default=BENCH_EPISODE_CNT,
+@click.option('-p', '--episode', "max_episode", default=BENCH_EPISODE_CNT,
               show_default=True, help="Episode count.")
 @click.option('-f', '--model-file', default=MODEL_FILE, show_default=True,
               help="Model data file name.")
@@ -389,19 +389,19 @@ def _bench(max_episode, model_file, show_result=True):
 
 
 @cli.command(help="Learn and play with human.")
-@click.option('-e', '--episode', "max_episode", default=EPISODE_CNT,
+@click.option('-p', '--episode', "max_episode", default=EPISODE_CNT,
               show_default=True, help="Episode count.")
-@click.option('-x', '--exploring-factor', "epsilon", default=EPSILON,
+@click.option('-e', '--epsilon', "epsilon", default=EPSILON,
               show_default=True, help="Exploring factor.")
-@click.option('-s', '--step-size', "alpha", default=ALPHA,
+@click.option('-a', '--alpha', "alpha", default=ALPHA,
               show_default=True, help="Step size.")
 @click.option('-f', '--model-file', default=MODEL_FILE, show_default=True,
               help="Model file name.")
 @click.option('-n', '--show-number', is_flag=True, default=False,
-              show_default=True, help="Show location number in the board.")
+              show_default=True, help="Show location number when play.")
 def learnplay(max_episode, epsilon, alpha, model_file, show_number):
     _learn(max_episode, epsilon, alpha, model_file)
-    _play(model_file, HumanAgent('O', show_number))
+    _play(model_file, HumanAgent('O'), show_number)
 
 
 @cli.command(help="Grid search hyper-parameters.")
