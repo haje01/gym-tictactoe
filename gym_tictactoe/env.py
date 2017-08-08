@@ -9,6 +9,7 @@ O_REWARD = 1
 X_REWARD = -1
 NO_REWARD = 0
 
+LEFT_PAD = '  '
 LOG_FMT = logging.Formatter('%(levelname)s '
                             '[%(filename)s:%(lineno)d] %(message)s',
                             '%Y-%m-%d %H:%M:%S')
@@ -158,13 +159,14 @@ class TicTacToeEnv(gym.Env):
         showfn("==== Episode {} ====".format(episode))
 
     def _show_board(self, showfn):
+        """Draw tictactoe board."""
         for j in range(0, 9, 3):
             def mark(i):
                 return tomark(self.board[i]) if not self.show_number or\
                     self.board[i] != 0 else str(i+1)
-            showfn('|'.join([mark(i) for i in range(j, j+3)]))
+            showfn(LEFT_PAD + '|'.join([mark(i) for i in range(j, j+3)]))
             if j < 6:
-                showfn('-----')
+                showfn(LEFT_PAD + '-----')
 
     def show_turn(self, human, mark):
         self._show_turn(print if human else logging.info, mark)
@@ -190,6 +192,21 @@ class TicTacToeEnv(gym.Env):
 
 
 def set_log_level_by(verbosity):
+    """Set log level by verbosity level.
+
+    verbosity vs log level:
+
+        0 -> logging.ERROR
+        1 -> logging.WARNING
+        2 -> logging.INFO
+        3 -> logging.DEBUG
+
+    Args:
+        verbosity (int): Verbosity level given by CLI option.
+
+    Returns:
+        (int): Matching log level.
+    """
     if verbosity == 0:
         level = 40
     elif verbosity == 1:
