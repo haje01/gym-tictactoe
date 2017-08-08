@@ -21,7 +21,7 @@ Python >= 3.5
     python td_agent.py
 
 
-# Temporal Difference Agent
+# Temporal Difference Agent Commands
 
 ## Learn
 
