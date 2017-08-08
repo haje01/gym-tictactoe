@@ -13,7 +13,7 @@ Python >= 3.5
     pip install -e .
 
 
-## Run example agents
+## Try example agents
 
     cd examples/
     python human_agent.py
