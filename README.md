@@ -48,7 +48,7 @@ Python >= 3.5
 	  -f, --model-file TEXT  Model data file name.  [default: td_agent.dat]
 	  --help                 Show this message and exit
 
-## Grid search for best hyper-parameters
+## Grid search
 
 	Usage: td_agent.py gridsearch [OPTIONS]
 
