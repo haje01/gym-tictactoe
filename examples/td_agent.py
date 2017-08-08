@@ -8,6 +8,7 @@ import json
 from collections import defaultdict
 from itertools import product
 from multiprocessing import Pool
+from tempfile import NamedTemporaryFile
 
 import pandas as pd
 import click
@@ -21,15 +22,22 @@ from examples.base_agent import BaseAgent
 
 
 DEFAULT_VALUE = 0
-EPISODE_CNT = 20000
+EPISODE_CNT = 17000
 BENCH_EPISODE_CNT = 3000
 MODEL_FILE = 'td_agent.dat'
-EPSILON = 0.1
-ALPHA = 0.3
+EPSILON = 0.08
+ALPHA = 0.4
 CWD = os.path.dirname(os.path.abspath(__file__))
+
 
 st_values = {}
 st_visits = defaultdict(lambda: 0)
+
+
+def reset_state_values():
+    global st_values, st_visits
+    st_values = {}
+    st_visits = defaultdict(lambda: 0)
 
 
 def set_state_value(state, value):
@@ -183,6 +191,19 @@ def learn(max_episode, epsilon, alpha, save_file):
 
 
 def _learn(max_episode, epsilon, alpha, save_file):
+    """Learn by episodes.
+
+    Make two TD agent, and repeat self play for given episode count.
+    Update state values as reward coming from the environment.
+
+    Args:
+        max_episode (int): Episode count.
+        epsilon (float): Probability of exploration.
+        alpha (float): Step size.
+        save_file: File name to save result.
+    """
+    reset_state_values()
+
     env = TicTacToeEnv()
     agents = [TDAgent('O', epsilon, alpha),
               TDAgent('X', epsilon, alpha)]
@@ -260,6 +281,17 @@ def play(load_file, show_number):
 
 
 def _play(load_file, vs_agent, show_number):
+    """Play with learned model.
+
+    Make TD agent and adversarial agnet to play with.
+    Play and switch starting mark when the game finished.
+    TD agent behave no exploring action while in play mode.
+
+    Args:
+        load_file (str):
+        vs_agent (object): Enemy agent of TD agent.
+        show_number (bool): Whether show grid number for visual hint.
+    """
     load_model(load_file)
     env = TicTacToeEnv(show_number=show_number)
     td_agent = TDAgent('X', 0, 0)  # prevent exploring
@@ -304,7 +336,7 @@ def _play(load_file, vs_agent, show_number):
 
 
 @cli.command(help="Learn and benchmark.")
-@click.option('-l', '--learn-episode', "max_episode", default=EPISODE_CNT,
+@click.option('-p', '--learn-episode', "max_episode", default=EPISODE_CNT,
               show_default=True, help="Learn episode count.")
 @click.option('-b', '--bench-episode', "max_bench_episode",
               default=BENCH_EPISODE_CNT, show_default=True, help="Bench "
@@ -339,6 +371,16 @@ def bench(model_file, max_episode):
 
 
 def _bench(max_episode, model_file, show_result=True):
+    """Benchmark given model.
+
+    Args:
+        max_episode (int): Episode count to benchmark.
+        model_file (str): Learned model file name to benchmark.
+        show_result (bool): Output result to stdout.
+
+    Returns:
+        (dict): Benchmark result.
+    """
     minfo = load_model(model_file)
     agents = [BaseAgent('O'), TDAgent('X', 0, 0)]
     show = False
@@ -408,9 +450,20 @@ def learnplay(max_episode, epsilon, alpha, model_file, show_number):
 @click.option('-q', '--quality', type=click.Choice(['high', 'mid', 'low']),
               default='mid', show_default=True, help="Grid search"
               " quality.")
-@click.option('-r', '--reproduce-test', "rtest_cnt", default=5,
+@click.option('-r', '--reproduce-test', "rtest_cnt", default=3,
               show_default=True, help="Reproducibility test count.")
 def gridsearch(quality, rtest_cnt):
+    """Find and output best hyper-parameters.
+
+    Grid search consists of two phase:
+        1. Select best 10 candidates of parameter combination.
+        1. Carry out reproduce test and output top 5 parameters.
+
+    Args:
+        quality (str): Select preset of parameter combination. High quality
+            means more granularity in parameter space.
+        rtest_cnt (int): Reproduce test count
+    """
     st = time.time()
     _gridsearch_candidate(quality)
     _gridsearch_reproduce(rtest_cnt)
@@ -418,6 +471,21 @@ def gridsearch(quality, rtest_cnt):
 
 
 def _gridsearch_reproduce(rtest_cnt):
+    """Refine parameter combination by reproduce test, and output best 5.
+
+    Reproduce test is a learn & bench process from each parameter combination.
+
+    1. Select top 10 parameters from previous step.
+    2. Execute reproduce test.
+    3. Sort by lose rate.
+    4. Output best 5 parameters.
+
+    Args:
+        rtest_cnt (int): Reproduce test count
+
+    Todo:
+        Apply multiprocessor worker
+    """
     print("Reproducibility test.")
     with open(os.path.join(CWD, 'gsmodels/result.json'), 'rt') as fr:
         df = pd.DataFrame([json.loads(line) for line in fr])
@@ -426,7 +494,7 @@ def _gridsearch_reproduce(rtest_cnt):
     index = []
     vals = []
     # for each candidate
-    pbar = _tqdm(total = len(top10_df) * rtest_cnt)
+    pbar = _tqdm(total=len(top10_df) * rtest_cnt)
     for idx, row in top10_df.iterrows():
         index.append(idx)
         base_win_sum = 0
@@ -434,8 +502,12 @@ def _gridsearch_reproduce(rtest_cnt):
         # bench repeatedly
         for i in range(rtest_cnt):
             pbar.update()
-            res = _bench(BENCH_EPISODE_CNT, os.path.join(CWD, row.model_file),
-                         False)
+            learn_episode = row.max_episode
+            epsilon = row.epsilon
+            alpha = row.alpha
+            with NamedTemporaryFile() as tmp:
+                res = _learnbench(learn_episode, BENCH_EPISODE_CNT, epsilon,
+                                  alpha, tmp.name, False)
             res = json.loads(res)
             base_win_sum += res['base_win']
             total_play += BENCH_EPISODE_CNT
@@ -449,6 +521,18 @@ def _gridsearch_reproduce(rtest_cnt):
 
 
 def _gridsearch_candidate(quality):
+    """Select best hyper-parameter candiadates by grid search.
+
+    1. Generate parameter combination by product each parameter space.
+    2. Spawn processors to learn & bench each combination.
+    3. Wait and write result to a file.
+
+    Args:
+        quality (str): Choice among 'high', 'mid', 'low'
+
+    Todo:
+        Progress bar estimation is not even.
+    """
     # disable sub-process's progressbar
     global tqdm
     tqdm = lambda x: x  # NOQA
