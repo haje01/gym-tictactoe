@@ -2,6 +2,15 @@
 
 OpenAI Gym Style Tic-Tac-Toe Environment.
 
+	  |O|X
+	 -----
+	  |O| 
+	 -----
+	 O|X|X
+
+	O's turn.
+	Enter location[1-9], q for quit:
+
 ## Requirement
 
 Python >= 3.5
