@@ -17,7 +17,7 @@ Python >= 3.5
 
 ## Install
 
-    git https://github.com/haje01/gym-tictactoe.git
+    git clone https://github.com/haje01/gym-tictactoe.git
     cd gym-tictactoe/
     pip install -e .
 
