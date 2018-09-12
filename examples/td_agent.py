@@ -24,7 +24,7 @@ from examples.base_agent import BaseAgent
 DEFAULT_VALUE = 0
 EPISODE_CNT = 17000
 BENCH_EPISODE_CNT = 3000
-MODEL_FILE = 'td_agent.dat'
+MODEL_FILE = 'best_td_agent.dat'
 EPSILON = 0.08
 ALPHA = 0.4
 CWD = os.path.dirname(os.path.abspath(__file__))
