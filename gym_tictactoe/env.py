@@ -93,19 +93,19 @@ class TicTacToeEnv(gym.Env):
         self.alpha = alpha
         self.set_start_mark('O')
         self.show_number = show_number
-        self._seed()
-        self._reset()
+        self.seed()
+        self.reset()
 
     def set_start_mark(self, mark):
         self.start_mark = mark
 
-    def _reset(self):
+    def reset(self):
         self.board = [0] * NUM_LOC
         self.mark = self.start_mark
         self.done = False
         return self._get_obs()
 
-    def _step(self, action):
+    def step(self, action):
         """Step environment by action.
 
         Args:
@@ -142,7 +142,7 @@ class TicTacToeEnv(gym.Env):
     def _get_obs(self):
         return tuple(self.board), self.mark
 
-    def _render(self, mode='human', close=False):
+    def render(self, mode='human', close=False):
         if close:
             return
         if mode == 'human':

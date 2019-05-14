@@ -17,8 +17,8 @@ tqdm = _tqdm
 
 from gym_tictactoe.env import TicTacToeEnv, set_log_level_by, agent_by_mark,\
     next_mark, check_game_status, after_action_state, O_REWARD, X_REWARD
-from examples.human_agent import HumanAgent
-from examples.base_agent import BaseAgent
+from human_agent import HumanAgent
+from base_agent import BaseAgent
 
 
 DEFAULT_VALUE = 0
@@ -551,7 +551,7 @@ def _gridsearch_candidate(quality):
         # low
         epsilons = [e * 0.01 for e in range(9, 13, 2)]
         alphas = [a * 0.1 for a in range(4, 6)]
-        episodes = [e for e in range(1000, 2000, 300)]
+        episodes = [e for e in range(10000, 25000, 10000)]
 
     alphas = [round(a, 2) for a in alphas]
     _args = list(product(episodes, epsilons, alphas))
