@@ -93,6 +93,7 @@ class TicTacToeEnv(gym.Env):
         self.alpha = alpha
         self.set_start_mark('O')
         self.show_number = show_number
+        self.seed()
         self.reset()
 
     def set_start_mark(self, mark):
